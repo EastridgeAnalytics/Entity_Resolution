@@ -1,8 +1,4 @@
-Below is an example of a README.md file updated for your final version of the notebook. You can customize it further to suit your needs.
 
----
-
-```markdown
 # Entity Resolution Demo Notebook
 
 This repository contains a Jupyter Notebook that demonstrates an end-to-end entity resolution pipeline using Neo4j. The notebook shows how to identify and resolve duplicate records caused by near-similarities in your data through a series of well-defined steps.
