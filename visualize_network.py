@@ -57,6 +57,7 @@ if data_source == "Neo4j":
     uri = st.sidebar.text_input("Neo4j URI", value=NEO4J_URI)
     user = st.sidebar.text_input("Neo4j Username", value=NEO4J_USER)
     password = st.sidebar.text_input("Neo4J Password", value=NEO4J_PASSWORD, type="password")
+    password = st.sidebar.text_input("Neo4J Password", value=NEO4J_PASSWORD, type="password")
     cypher_query = st.sidebar.text_area("Cypher Query", value=DEFAULT_CYPHER_QUERY)
     display_property = st.sidebar.text_input("Display Property", value=DEFAULT_DISPLAY_PROPERTY)
     
@@ -83,16 +84,24 @@ elif data_source == "Relational DB":
 
 # If you want caching, uncomment the decorator below.
 # @st.cache_data
+# If you want caching, uncomment the decorator below.
+# @st.cache_data
 def load_graph_data_neo4j(uri, user, password, db_name, query, display_property):
     """
     Connect to Neo4j, run a single query returning columns n, r, and m,
+    and extract all properties from nodes (n, m) and relationship (r).
     and extract all properties from nodes (n, m) and relationship (r).
     
     We store:
       - Node properties: all from node.keys() plus 'id', 'labels' and a fallback label if needed.
       - Relationship properties: all from relationship.keys(), plus 'id', 'type', 'start', 'end'.
+    We store:
+      - Node properties: all from node.keys() plus 'id', 'labels' and a fallback label if needed.
+      - Relationship properties: all from relationship.keys(), plus 'id', 'type', 'start', 'end'.
     """
     driver = GraphDatabase.driver(uri, auth=(user, password))
+    nodes_dict = {}  # keyed by node ID (string)
+    edges_list = []  # list of edge dicts
     nodes_dict = {}  # keyed by node ID (string)
     edges_list = []  # list of edge dicts
 
@@ -110,7 +119,35 @@ def load_graph_data_neo4j(uri, user, password, db_name, query, display_property)
                 # Extract all node properties
                 n_data = {key: n_obj[key] for key in n_obj.keys()}
                 # Additional meta info
+        results = session.run(query)
+        for record in results:
+            n_obj = record["n"]
+            r_obj = record["r"]
+            m_obj = record["m"]
+
+            # -- Process node n --
+            n_id = str(n_obj.id)
+            # If we haven't seen this node yet, gather its properties
+            if n_id not in nodes_dict:
+                # Extract all node properties
+                n_data = {key: n_obj[key] for key in n_obj.keys()}
+                # Additional meta info
                 n_data["id"] = n_id
+                # Store all labels (which is a frozenset in the official driver)
+                labels = list(n_obj.labels)
+                n_data["labels"] = labels
+                # For display, choose a label or fallback
+                display_label = ":".join(labels) if labels else DEFAULT_NODE_LABEL
+                # The "label" field is the type of node we'll style by
+                n_data["label"] = display_label
+                # The "name" field is what st_link_analysis typically shows as node text
+                n_data["name"] = n_data.get(display_property, display_label)
+                nodes_dict[n_id] = n_data
+
+            # -- Process node m --
+            m_id = str(m_obj.id)
+            if m_id not in nodes_dict:
+                m_data = {key: m_obj[key] for key in m_obj.keys()}
                 # Store all labels (which is a frozenset in the official driver)
                 labels = list(n_obj.labels)
                 n_data["labels"] = labels
@@ -146,10 +183,33 @@ def load_graph_data_neo4j(uri, user, password, db_name, query, display_property)
             rel_data["label"] = r_obj.type
             edges_list.append(rel_data)
 
+                labels = list(m_obj.labels)
+                m_data["labels"] = labels
+                display_label = ":".join(labels) if labels else DEFAULT_NODE_LABEL
+                m_data["label"] = display_label
+                m_data["name"] = m_data.get(display_property, display_label)
+                nodes_dict[m_id] = m_data
+
+            # -- Process relationship r --
+            # Note: In official Neo4j driver, a Relationship object has:
+            #   r_obj.id, r_obj.type, r_obj.start_node, r_obj.end_node, and r_obj.keys() for properties
+            rel_data = {key: r_obj[key] for key in r_obj.keys()}  # all relationship properties
+            # Add meta fields
+            rel_data["id"] = str(r_obj.id)
+            rel_data["source"] = str(r_obj.start_node.id)
+            rel_data["target"] = str(r_obj.end_node.id)
+            # We'll store 'label' in edges to define the relationship type in the graph
+            rel_data["label"] = r_obj.type
+            edges_list.append(rel_data)
+
     driver.close()
 
     # Build the final cytoscape-style elements
+
+    # Build the final cytoscape-style elements
     elements = {
+        "nodes": [{"data": data} for data in nodes_dict.values()],
+        "edges": [{"data": edge} for edge in edges_list]
         "nodes": [{"data": data} for data in nodes_dict.values()],
         "edges": [{"data": edge} for edge in edges_list]
     }
@@ -157,10 +217,13 @@ def load_graph_data_neo4j(uri, user, password, db_name, query, display_property)
 
 # If you want caching, uncomment the decorator below.
 # @st.cache_data
+# If you want caching, uncomment the decorator below.
+# @st.cache_data
 def load_graph_data_sql(conn_str, nodes_query, relationships_query,
                         node_id_col, node_label_col, node_name_col,
                         rel_source_col, rel_target_col, rel_type_col):
     """
+    Load nodes and relationships from SQL, retaining all columns as properties.
     Load nodes and relationships from SQL, retaining all columns as properties.
     """
     engine = sqlalchemy.create_engine(conn_str)
@@ -178,6 +241,14 @@ def load_graph_data_sql(conn_str, nodes_query, relationships_query,
             continue
         nodes_seen.add(node_id)
         node_data["id"] = node_id
+        
+        # Node label fallback
+        node_label = node_data.get(node_label_col, "") or DEFAULT_NODE_LABEL
+        node_data["label"] = node_label
+        
+        # Node display name fallback
+        node_data["name"] = node_data.get(node_name_col, node_label)
+        
         
         # Node label fallback
         node_label = node_data.get(node_label_col, "") or DEFAULT_NODE_LABEL
