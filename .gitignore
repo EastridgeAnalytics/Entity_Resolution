@@ -9,7 +9,7 @@ app.py
 generate_mockup.py
 sample_data.csv
 generate_mock_data.ipynb
-
+.env
 
 
 # User-specific files
