@@ -70,7 +70,7 @@ pip install -r requirements.yaml
 ```
 
 ```bash
-pip conda -r requirements.yaml
+conda env create -f requirements.yaml
 ```
 
 Or install manually:
@@ -89,9 +89,9 @@ pip install streamlit neo4j faker duckdb sqlalchemy python-dotenv st-link-analys
 The Streamlit apps (`app.py`, `visualize_network.py`) use a **`.env` file** for Neo4j credentials:
 
 ```ini
-NEO4J_URI=bolt://localhost:7687
+NEO4J_URI=yourURI
 NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=neo4j12345
+NEO4J_PASSWORD=yourpassword
 NEO4J_DB_NAME=neo4j
 ```
 
@@ -117,78 +117,12 @@ Launch the **Streamlit-based graph visualization**:
 streamlit run visualize_network.py
 ```
 
-- Select **"Neo4j"** or **"Relational DB"** as the data source.
-- Configure the **Cypher query** (for Neo4j) or **SQL queries** (for a relational database).
+- Select **"Neo4j"** as the data source if using it for this pipeline. 
+- Configure the **Cypher query**. 
 - Click **"Load Data"** to visualize the network.
 
 ---
 
-### **3. Entity Resolution MVP (Splink)**
-To run the **Splink-based entity resolution**:
-
-```bash
-streamlit run app.py
-```
-
-- Upload a **CSV file** with entity data.
-- Adjust **fuzzy matching thresholds** in the sidebar.
-- Click **"Run Entity Resolution"** to compute similarities.
-- View **matched entity pairs** and their **match probabilities**.
-- Optionally, export the results to **Neo4j**.
-
----
-
-## **Data Sources**
-The applications support **two types of graph data sources**:
-
-### **1. Neo4j**
-- Run queries against an **active Neo4j database**.
-- Requires **Bolt connection (`bolt://...`)**.
-- Uses Cypher queries to fetch **nodes and relationships**.
-- Example query:
-  ```cypher
-  MATCH (n)-[r]->(m)
-  RETURN n, r, m
-  LIMIT 100
-  ```
-
-### **2. Relational Database (SQL)**
-- Load graph-like data from **PostgreSQL, SQLite, MySQL, etc.**.
-- Uses **SQLAlchemy** for database connections.
-- Requires two tables:
-  - **Nodes Table** (e.g., `nodes_view`)
-  - **Relationships Table** (e.g., `relationships_view`)
-
-#### **SQL Queries Example**
-- Nodes Query:
-  ```sql
-  SELECT * FROM nodes_view LIMIT 100;
-  ```
-- Relationships Query:
-  ```sql
-  SELECT * FROM relationships_view LIMIT 200;
-  ```
-
----
-
-## **Customization**
-### **1. Adjusting Similarity Matching in `app.py`**
-- Modify **blocking rules** in `run_splink_linkage()`
-- Adjust **Jaro-Winkler thresholds** for fuzzy name/address matching.
-- Configure **probabilistic scoring** using **EM algorithm**.
-
-### **2. Updating Graph Styling in `visualize_network.py`**
-- Modify **color mapping** for node labels.
-- Change **graph layouts** (e.g., `grid`, `circle`, `dagre`).
-- Add **custom tooltips** for nodes/edges.
-
-### **3. Changing Default Queries**
-- Update `DEFAULT_CYPHER_QUERY`, `SQL_NODES_QUERY`, and `SQL_RELATIONSHIPS_QUERY`.
-
----
-
-## **License & Contribution**
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
 **Contributions are welcome!**  
 Feel free to:
@@ -207,5 +141,3 @@ Below are sample screenshots from the network visualization tool:
 ![Graph View](images/image.png)
 
 ---
-
-**🚀 Ready to explore entity resolution & graph analytics? Get started today!** 🎉
