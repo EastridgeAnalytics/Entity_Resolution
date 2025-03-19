@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 from st_link_analysis import st_link_analysis, NodeStyle, EdgeStyle
+import streamlit as st
 
 # ============================================
 # Load environment variables
@@ -12,19 +13,18 @@ from st_link_analysis import st_link_analysis, NodeStyle, EdgeStyle
 load_dotenv()
 
 DEFAULT_NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-DEFAULT_NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+DEFAULT_NEO4J_USER = os.getenv("NEO4J_USERNAME", "neo4j")
 DEFAULT_NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "neo4j12345")
 DEFAULT_DB_NAME = os.getenv("NEO4J_DB_NAME", "neo4j")
 
 # ============================================
 # OTHER DEFAULTS
 # ============================================
-DEFAULT_CYPHER_QUERY = """
-MATCH (n)-[r]->(m)
+DEFAULT_CYPHER_QUERY = """MATCH (n)-[r]->(m)
 RETURN n, r, m
 LIMIT 100
 """
-DEFAULT_DISPLAY_PROPERTY = "full_name"
+DEFAULT_DISPLAY_PROPERTY = "fullName"
 DEFAULT_NODE_LABEL = "Observation"
 
 # SQL Defaults
@@ -44,7 +44,7 @@ DEFAULT_REL_TYPE_COL = "Relationship_Type"
 # STREAMLIT APP CONFIGURATION & TITLE
 # ============================================
 st.set_page_config(page_title="Network Graph with All Properties", layout="wide")
-st.title("Network Graph with All Node & Edge Properties")
+st.sidebar.title("Network Graph with All Node & Edge Properties")
 
 # ============================================
 # SIDEBAR: DATA SOURCE SELECTION & SETTINGS
@@ -285,7 +285,7 @@ def create_dynamic_styles(elements):
 elements = None
 
 if data_source == "Neo4j":
-    if st.sidebar.button("Load Data from Neo4j", key="neo4j_load_button"):
+    if st.button("Load Data from Neo4j", key="neo4j_load_button"):
         try:
             elements = load_graph_data_neo4j(uri, user, password, db_name, cypher_query, display_property)
             st.success("Graph data loaded successfully from Neo4j!")
@@ -293,7 +293,7 @@ if data_source == "Neo4j":
             st.error(f"Error loading data from Neo4j: {e}")
 
 elif data_source == "Relational DB":
-    if st.sidebar.button("Load Data from Relational DB", key="sql_load_button"):
+    if st.button("Load Data from Relational DB", key="sql_load_button"):
         try:
             elements = load_graph_data_sql(
                 conn_str,
@@ -312,13 +312,12 @@ elif data_source == "Relational DB":
 
 if elements:
     node_styles, edge_styles = create_dynamic_styles(elements)
-    st.header("Network Graph")
+    # st.header("Network Graph")
     st_link_analysis(
         elements,
         layout="cose",
         node_styles=node_styles,
-        edge_styles=edge_styles,
-        zoom=True
+        edge_styles=edge_styles
     )
 else:
     st.info("Press the appropriate button in the sidebar to load data and display the graph.")
